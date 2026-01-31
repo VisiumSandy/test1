@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Carte des Commandes Shopify</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Roboto', Arial, sans-serif;
+            background: #f5f5f5;
+            color: #202124;
+            min-height: 100vh;
+        }
+
+        .header-bar {
+            background: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-icon {
+            font-size: 24px;
+        }
+
+        .logo-text {
+            font-size: 20px;
+            font-weight: 500;
+            color: #5f6368;
+        }
+
+        .upload-button {
+            background: #1a73e8;
+            color: white;
+            border: none;
+            padding: 10px 24px;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        }
+
+        .upload-button:hover {
+            background: #1557b0;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .map-container {
+            position: relative;
+            height: calc(100vh - 64px);
+        }
+
+        #map {
+            height: 100%;
+            width: 100%;
+        }
+
+        .stats-panel {
+            position: absolute;
+            top: 16px;
+            left: 16px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+            padding: 16px;
+            min-width: 280px;
+            z-index: 500;
+            max-height: calc(100vh - 120px);
+            overflow-y: auto;
+        }
+
+        .stats-panel h3 {
+            font-size: 16px;
+            font-weight: 500;
+            color: #202124;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #e8eaed;
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #f1f3f4;
+        }
+
+        .stat-item:last-child {
+            border-bottom: none;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            color: #5f6368;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .stat-value {
+            font-size: 18px;
+            font-weight: 500;
+            color: #1a73e8;
+        }
+
+        .leaflet-popup-content-wrapper {
+            background: white;
+            color: #202124;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            padding: 0;
+        }
+
+        .leaflet-popup-tip {
+            background: white;
+        }
+
+        .leaflet-popup-content {
+            margin: 0;
+        }
+
+        .popup-content {
+            font-family: 'Roboto', Arial, sans-serif;
+            padding: 16px;
+            min-width: 250px;
+        }
+
+        .popup-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #e8eaed;
+        }
+
+        .popup-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #1a73e8 0%, #34a853 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 18px;
+            font-weight: 500;
+        }
+
+        .popup-name {
+            font-size: 16px;
+            font-weight: 500;
+            color: #202124;
+        }
+
+        .popup-detail {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            margin: 10px 0;
+            font-size: 14px;
+            color: #5f6368;
+        }
+
+        .popup-icon {
+            color: #1a73e8;
+            font-size: 16px;
+            min-width: 20px;
+        }
+
+        .popup-text {
+            flex: 1;
+            line-height: 1.5;
+        }
+
+        .popup-divider {
+            margin: 12px 0;
+            border: 0;
+            border-top: 1px solid #e8eaed;
+        }
+
+        .custom-marker {
+            width: 32px;
+            height: 32px;
+            background: #ea4335;
+            border-radius: 50% 50% 50% 0;
+            transform: rotate(-45deg);
+            border: 3px solid white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            position: relative;
+        }
+
+        .custom-marker::after {
+            content: '';
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: white;
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255,255,255,0.95);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+        }
+
+        .loading-content {
+            text-align: center;
+            background: white;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .loading-spinner {
+            width: 48px;
+            height: 48px;
+            border: 4px solid #e8eaed;
+            border-top-color: #1a73e8;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            font-size: 16px;
+            color: #5f6368;
+            margin-bottom: 8px;
+        }
+
+        .loading-progress {
+            font-size: 14px;
+            color: #1a73e8;
+            font-weight: 500;
+        }
+
+        .error-message {
+            background: #fce8e6;
+            color: #c5221f;
+            padding: 16px;
+            border-radius: 8px;
+            margin: 16px;
+            border-left: 4px solid #ea4335;
+            font-size: 14px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        /* Map controls styling */
+        .leaflet-control-zoom {
+            border: none !important;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.15) !important;
+        }
+
+        .leaflet-control-zoom a {
+            color: #5f6368 !important;
+            font-weight: 500;
+        }
+
+        .leaflet-bar a:hover {
+            background: #f1f3f4 !important;
+        }
+
+        @media (max-width: 768px) {
+            .header-bar {
+                padding: 12px 16px;
+            }
+
+            .logo-text {
+                font-size: 16px;
+            }
+
+            .stats-panel {
+                min-width: auto;
+                max-width: calc(100% - 32px);
+            }
+
+            .map-container {
+                height: calc(100vh - 56px);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header-bar">
+        <div class="logo">
+            <span class="logo-icon">📍</span>
+            <span class="logo-text">Carte des Commandes Shopify</span>
+        </div>
+        <button class="upload-button" onclick="document.getElementById('csvFile').click()">
+            📤 Importer CSV
+        </button>
+        <input type="file" id="csvFile" accept=".csv">
+    </div>
+
+    <div class="map-container">
+        <div class="stats-panel" id="statsPanel" style="display: none;">
+            <h3>📊 Statistiques</h3>
+            <div id="statsContent"></div>
+        </div>
+        <div id="map"></div>
+    </div>
+
+    <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <div class="loading-text" id="loadingText">Chargement en cours...</div>
+            <div class="loading-progress" id="loadingProgress"></div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script>
+        let map;
+        const fileInput = document.getElementById('csvFile');
+        const statsPanel = document.getElementById('statsPanel');
+        const statsContent = document.getElementById('statsContent');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const loadingText = document.getElementById('loadingText');
+        const loadingProgress = document.getElementById('loadingProgress');
+        
+        // Stockage des données
+        const STORAGE_KEY = 'shopify_orders_data';
+        const GEOCODE_CACHE_KEY = 'shopify_geocode_cache';
+        let allOrders = [];
+        let geocodeCache = {};
+
+        // Initialiser la carte avec style Google Maps
+        function initMap() {
+            map = L.map('map', {
+                zoomControl: true,
+                scrollWheelZoom: true
+            }).setView([30, 0], 2);
+
+            // Tuile Google Maps style
+            L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+                maxZoom: 20,
+                subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+                attribution: '© Google Maps'
+            }).addTo(map);
+        }
+
+        // Sauvegarder les données
+        function saveData() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(allOrders));
+                localStorage.setItem(GEOCODE_CACHE_KEY, JSON.stringify(geocodeCache));
+                console.log('Données sauvegardées:', allOrders.length, 'commandes');
+                console.log('Cache géocodage:', Object.keys(geocodeCache).length, 'adresses');
+            } catch (error) {
+                console.error('Erreur de sauvegarde:', error);
+                showError('⚠️ Erreur lors de la sauvegarde des données');
+            }
+        }
+
+        // Charger les données sauvegardées
+        function loadSavedData() {
+            try {
+                const saved = localStorage.getItem(STORAGE_KEY);
+                const savedCache = localStorage.getItem(GEOCODE_CACHE_KEY);
+                
+                if (saved) {
+                    allOrders = JSON.parse(saved);
+                    console.log('Données chargées:', allOrders.length, 'commandes');
+                }
+                
+                if (savedCache) {
+                    geocodeCache = JSON.parse(savedCache);
+                    console.log('Cache chargé:', Object.keys(geocodeCache).length, 'adresses');
+                }
+                
+                if (allOrders.length > 0) {
+                    displayAllOrders();
+                }
+            } catch (error) {
+                console.error('Erreur de chargement:', error);
+                allOrders = [];
+                geocodeCache = {};
+            }
+        }
+
+        // Effacer toutes les données
+        function clearAllData() {
+            if (confirm('⚠️ Voulez-vous vraiment effacer toutes les commandes sauvegardées ?')) {
+                localStorage.removeItem(STORAGE_KEY);
+                localStorage.removeItem(GEOCODE_CACHE_KEY);
+                allOrders = [];
+                geocodeCache = {};
+                map.eachLayer((layer) => {
+                    if (layer instanceof L.Marker) {
+                        map.removeLayer(layer);
+                    }
+                });
+                statsPanel.style.display = 'none';
+                alert('✅ Toutes les données ont été effacées');
+            }
+        }
+
+        // Afficher le loading
+        function showLoading(text, progress = '') {
+            loadingOverlay.style.display = 'flex';
+            loadingText.textContent = text;
+            loadingProgress.textContent = progress;
+        }
+
+        // Cacher le loading
+        function hideLoading() {
+            loadingOverlay.style.display = 'none';
+        }
+
+        // Afficher une erreur
+        function showError(message) {
+            hideLoading();
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error-message';
+            errorDiv.textContent = message;
+            document.body.appendChild(errorDiv);
+            setTimeout(() => errorDiv.remove(), 5000);
+        }
+
+        // Géocodage avec Nominatim et cache
+        async function geocodeAddress(address) {
+            // Vérifier d'abord dans le cache
+            if (geocodeCache[address]) {
+                console.log('Cache hit pour:', address);
+                return geocodeCache[address];
+            }
+            
+            try {
+                const query = encodeURIComponent(address);
+                const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=1`);
+                const data = await response.json();
+                
+                if (data && data.length > 0) {
+                    const coords = {
+                        lat: parseFloat(data[0].lat),
+                        lon: parseFloat(data[0].lon)
+                    };
+                    // Sauvegarder dans le cache
+                    geocodeCache[address] = coords;
+                    saveData(); // Sauvegarder le cache mis à jour
+                    return coords;
+                }
+                return null;
+            } catch (error) {
+                console.error('Erreur de géocodage:', error);
+                return null;
+            }
+        }
+
+        // Obtenir les initiales d'un nom
+        function getInitials(name) {
+            if (!name) return '?';
+            const parts = name.trim().split(' ');
+            if (parts.length >= 2) {
+                return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+            }
+            return name[0].toUpperCase();
+        }
+
+        // Traiter le CSV
+        async function processCSV(file) {
+            showLoading('Lecture du fichier CSV...', '');
+            
+            Papa.parse(file, {
+                header: true,
+                complete: async function(results) {
+                    const newOrders = results.data.filter(row => row.Name && row['Shipping Country']);
+                    
+                    if (newOrders.length === 0) {
+                        showError('❌ Aucune commande valide trouvée dans le fichier');
+                        return;
+                    }
+
+                    // Créer un Set des IDs existants pour éviter les doublons
+                    const existingIds = new Set(allOrders.map(o => o.orderId));
+                    let addedCount = 0;
+                    
+                    // Ajouter les nouvelles commandes
+                    for (const order of newOrders) {
+                        const orderId = order.Name; // Utiliser le nom de commande comme ID unique
+                        
+                        if (!existingIds.has(orderId)) {
+                            const shippingCity = order['Shipping City'] || '';
+                            const shippingCountry = order['Shipping Country'] || '';
+                            const address = `${shippingCity}, ${shippingCountry}`.trim();
+                            
+                            if (address && address !== ',') {
+                                allOrders.push({
+                                    orderId: orderId,
+                                    name: order['Billing Name'] || order['Shipping Name'] || 'Client inconnu',
+                                    email: order['Email'] || '',
+                                    total: order['Total'] || '0',
+                                    date: order['Created at'] || '',
+                                    address: address
+                                });
+                                addedCount++;
+                            }
+                        }
+                    }
+
+                    if (addedCount === 0) {
+                        showError('ℹ️ Aucune nouvelle commande à ajouter (toutes existent déjà)');
+                        return;
+                    }
+
+                    // Sauvegarder les données
+                    saveData();
+
+                    // Afficher toutes les commandes
+                    await displayAllOrders();
+
+                    hideLoading();
+                    alert(`✅ ${addedCount} nouvelle(s) commande(s) ajoutée(s) !\nTotal: ${allOrders.length} commandes`);
+                },
+                error: function(error) {
+                    showError(`❌ Erreur lors de la lecture du fichier: ${error.message}`);
+                }
+            });
+        }
+
+        // Afficher toutes les commandes sauvegardées
+        async function displayAllOrders() {
+            // Effacer les marqueurs existants
+            map.eachLayer((layer) => {
+                if (layer instanceof L.Marker) {
+                    map.removeLayer(layer);
+                }
+            });
+
+            if (allOrders.length === 0) {
+                statsPanel.style.display = 'none';
+                return;
+            }
+
+            showLoading('Affichage des commandes...', '');
+
+            // Grouper les commandes par emplacement
+            const locationMap = new Map();
+            
+            for (const order of allOrders) {
+                if (!locationMap.has(order.address)) {
+                    locationMap.set(order.address, []);
+                }
+                locationMap.get(order.address).push(order);
+            }
+
+            // Identifier les adresses à géocoder (non présentes dans le cache)
+            const addressesToGeocode = [];
+            for (const address of locationMap.keys()) {
+                if (!geocodeCache[address]) {
+                    addressesToGeocode.push(address);
+                }
+            }
+
+            // Afficher les marqueurs
+            let processed = 0;
+            const total = locationMap.size;
+            const newAddressCount = addressesToGeocode.length;
+            const countries = new Set();
+            let totalRevenue = 0;
+            const markers = [];
+
+            if (newAddressCount > 0) {
+                showLoading('Géocodage des nouvelles adresses...', `0/${newAddressCount}`);
+            } else {
+                showLoading('Chargement depuis le cache...', `0/${total}`);
+            }
+
+            let geocoded = 0;
+
+            for (const [address, ordersList] of locationMap.entries()) {
+                const coords = await geocodeAddress(address);
+                
+                if (coords) {
+                    // Créer le marqueur style Google Maps
+                    const marker = L.marker([coords.lat, coords.lon], {
+                        icon: L.divIcon({
+                            className: 'custom-marker-wrapper',
+                            html: '<div class="custom-marker"></div>',
+                            iconSize: [32, 32],
+                            iconAnchor: [16, 32]
+                        })
+                    }).addTo(map);
+
+                    // Créer le contenu du popup style Google
+                    let popupContent = '<div class="popup-content">';
+                    
+                    ordersList.forEach((order, index) => {
+                        if (index > 0) popupContent += '<hr class="popup-divider">';
+                        
+                        const initials = getInitials(order.name);
+                        popupContent += `
+                            <div class="popup-header">
+                                <div class="popup-avatar">${initials}</div>
+                                <div class="popup-name">${order.name}</div>
+                            </div>
+                        `;
+                        
+                        if (order.email) {
+                            popupContent += `
+                                <div class="popup-detail">
+                                    <span class="popup-icon">📧</span>
+                                    <span class="popup-text">${order.email}</span>
+                                </div>
+                            `;
+                        }
+                        
+                        popupContent += `
+                            <div class="popup-detail">
+                                <span class="popup-icon">💰</span>
+                                <span class="popup-text">${order.total}</span>
+                            </div>
+                            <div class="popup-detail">
+                                <span class="popup-icon">📍</span>
+                                <span class="popup-text">${order.address}</span>
+                            </div>
+                        `;
+                        
+                        if (order.date) {
+                            const date = new Date(order.date);
+                            popupContent += `
+                                <div class="popup-detail">
+                                    <span class="popup-icon">📅</span>
+                                    <span class="popup-text">${date.toLocaleDateString('fr-FR', {
+                                        year: 'numeric',
+                                        month: 'long',
+                                        day: 'numeric'
+                                    })}</span>
+                                </div>
+                            `;
+                        }
+                    });
+                    
+                    popupContent += '</div>';
+
+                    marker.bindPopup(popupContent, {
+                        maxWidth: 350,
+                        className: 'custom-popup'
+                    });
+
+                    markers.push(marker);
+
+                    // Compter les revenus
+                    ordersList.forEach(order => {
+                        const amount = parseFloat(order.total.replace(/[^0-9.-]+/g, ''));
+                        if (!isNaN(amount)) totalRevenue += amount;
+                    });
+
+                    // Ajouter le pays
+                    const country = address.split(',').pop().trim();
+                    if (country) countries.add(country);
+                }
+
+                processed++;
+                
+                // Si c'était une nouvelle adresse à géocoder
+                if (!geocodeCache[address]) {
+                    geocoded++;
+                    loadingProgress.textContent = `${geocoded}/${newAddressCount}`;
+                    // Petite pause pour éviter de surcharger l'API (seulement pour nouvelles adresses)
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                } else {
+                    loadingProgress.textContent = `${processed}/${total}`;
+                }
+            }
+
+            hideLoading();
+
+            // Afficher les statistiques
+            displayStats(allOrders.length, countries.size, totalRevenue);
+
+            // Ajuster la vue de la carte
+            if (markers.length > 0) {
+                const group = L.featureGroup(markers);
+                map.fitBounds(group.getBounds(), { padding: [50, 50] });
+            }
+        }
+
+        // Afficher les statistiques style Google
+        function displayStats(orderCount, countryCount, revenue) {
+            statsPanel.style.display = 'block';
+            statsContent.innerHTML = `
+                <div class="stat-item">
+                    <span class="stat-label">
+                        <span>📦</span> Total commandes
+                    </span>
+                    <span class="stat-value">${orderCount}</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">
+                        <span>🌍</span> Pays
+                    </span>
+                    <span class="stat-value">${countryCount}</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">
+                        <span>💰</span> Revenu total
+                    </span>
+                    <span class="stat-value">${revenue.toLocaleString('fr-FR', {
+                        style: 'currency',
+                        currency: 'EUR'
+                    })}</span>
+                </div>
+                <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid #e8eaed;">
+                    <button onclick="clearAllData()" style="
+                        width: 100%;
+                        background: #ea4335;
+                        color: white;
+                        border: none;
+                        padding: 10px;
+                        border-radius: 4px;
+                        font-size: 14px;
+                        font-weight: 500;
+                        cursor: pointer;
+                        transition: background 0.2s;
+                    " onmouseover="this.style.background='#c5221f'" onmouseout="this.style.background='#ea4335'">
+                        🗑️ Effacer toutes les données
+                    </button>
+                </div>
+            `;
+        }
+
+        // Événement de sélection de fichier
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                if (file.name.endsWith('.csv')) {
+                    processCSV(file);
+                } else {
+                    showError('❌ Veuillez sélectionner un fichier CSV valide');
+                }
+            }
+        });
+
+        // Initialiser la carte et charger les données sauvegardées au démarrage
+        initMap();
+        loadSavedData();
+    </script>
+</body>
+</html>
